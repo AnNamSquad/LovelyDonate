@@ -50,7 +50,6 @@ dependencies {
     implementation('me.devnatan:inventory-framework-platform-bukkit:3.5.0')
     implementation('me.devnatan:inventory-framework-platform-paper:3.5.0')
     implementation("com.github.retrooper:packetevents-spigot:2.11.0")
-    implementation('net.wesjd:anvilgui:1.10.6-SNAPSHOT')
 }
 
 shadowJar {
@@ -70,7 +69,6 @@ shadowJar {
     relocate("org.json.json", "me.typical.lib.json")
     relocate("io.github.retrooper.packetevents", "me.typical.lib.io.packetevents")
     relocate("com.github.retrooper.packetevents", "me.typical.lib.com.packetevents")
-    relocate("net.wesjd.anvilgui", "me.typical.lib.anvilgui")
     relocate("kotlin", "me.typical.lib.kotlin")
 }
 
@@ -178,36 +176,46 @@ tasks.register('patchCommandApiNms12111') {
 }
 
 shadowJar.finalizedBy(tasks.named('patchCommandApiNms12111'))
-tasks.register('sendRconCommand') {
-    description = 'Sends "res" command to the Minecraft server via RCON'
-    doLast {
-        def host = 'localhost'          // your server IP or hostname
-        def port = 25575                // your RCON port
-        def password = '123123123' // your RCON password
-        def command = 'res' // the command you want to send
-        // Send the command and capture the response
-        Rcon rcon = null
-        try {
-            rcon = new Rcon(host, port, password)
-            String response = rcon.command(command)
-            println "RCON Response: $response"
 
-        } catch (SocketException e) {
-            // Connection reset is expected when the server stops itself
-            println "🔌 Connection reset by server (expected if it just stopped). Ignoring."
-        } catch (Exception e) {
-            // Other RCON or IO errors
-            println "❗ Unexpected error sending RCON command: ${e.class.simpleName}: ${e.message}"
-        } finally {
-            if (rcon != null) {
-                try {
-                    rcon.close()
-                } catch (Exception ignored) {
-                }
+def sendRconCommandToServer = { String command ->
+    def host = findProperty('rconHost') ?: 'localhost'
+    def port = (findProperty('rconPort') ?: '25575') as int
+    def password = findProperty('rconPassword') ?: '123123123'
+    Rcon rcon = null
+    try {
+        rcon = new Rcon(host, port, password)
+        String response = rcon.command(command)
+        println "RCON Response: $response"
+
+    } catch (SocketException e) {
+        // Connection reset is expected when the server stops itself
+        println "Connection reset by server (expected if it just stopped). Ignoring."
+    } catch (Exception e) {
+        // Other RCON or IO errors
+        println "Unexpected error sending RCON command: ${e.class.simpleName}: ${e.message}"
+    } finally {
+        if (rcon != null) {
+            try {
+                rcon.close()
+            } catch (Exception ignored) {
             }
         }
-        println "⏱ Waiting 5 second..."
-        Thread.sleep(5000)
+    }
+    println "Waiting 5 seconds..."
+    Thread.sleep(5000)
+}
+
+tasks.register('sendRconCommand') {
+    description = 'Sends a configurable command to the Minecraft server via RCON'
+    doLast {
+        sendRconCommandToServer((findProperty('rconCommand') ?: 'res').toString())
+    }
+}
+
+tasks.register('plugmanReload') {
+    description = 'Reloads LovelyPay via PlugMan/PlugManX over RCON'
+    doLast {
+        sendRconCommandToServer((findProperty('plugmanCommand') ?: 'plugman reload LovelyPay').toString())
     }
 }
 processResources {

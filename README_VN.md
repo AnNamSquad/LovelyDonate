@@ -30,7 +30,7 @@ Hướng dẫn sử dụng
   có [PlayerPoints](https://www.spigotmc.org/resources/playerpoints.80745/)
   và [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) để hoạt động
 - Server cần chạy Java 21 hoặc Java 25
-- Tải plugin [tại đây](https://github.com/SimpMC-Studio/LovelyPay/releases/), và để vào thư mục `plugins`
+- Tải plugin [tại đây](https://github.com/LovelySMP-Studio/LovelyPay/releases/), và để vào thư mục `plugins`
 - Cần cài thêm floodgate để sử dụng giao diện nạp thẻ cho người chơi Bedrock, tải
   tại [đây](https://geysermc.org/download?project=floodgate)
 

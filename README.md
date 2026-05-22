@@ -30,7 +30,7 @@ Usage Guide
   and [PlaceholderAPI
 ](https://www.spigotmc.org/resources/placeholderapi.6245/) to function
 - Run the server with Java 21 or Java 25
-- Download the plugin [here](https://github.com/SimpMC-Studio/LovelyPay/releases/), and place it in the `plugins` folder
+- Download the plugin [here](https://github.com/LovelySMP-Studio/LovelyPay/releases/), and place it in the `plugins` folder
 - You need to install floodgate to use the card recharge interface for Bedrock players, download
   it [here](https://geysermc.org/download?project=floodgate)
 

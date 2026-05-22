@@ -1,10 +1,10 @@
 name: LovelyPay
 version: '$version'
-main: org.simpmc.lovelypay.LPPlugin
+main: org.lovelysmp.lovelypay.LPPlugin
 api-version: '1.21.11'
 author: 'typical.smc'
 description: 'Payment solution for Vietnamese Minecraft Servers'
-website: 'https://github.com/SimpMC-Studio/LovelyPay'
+website: 'https://github.com/LovelySMP-Studio/LovelyPay'
 folia-supported: true
 libraries:
   - com.h2database:h2:2.3.232

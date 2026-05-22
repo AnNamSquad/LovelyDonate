@@ -1,0 +1,37 @@
+package org.lovelysmp.lovelypay.config.types;
+
+import de.exlll.configlib.Comment;
+import de.exlll.configlib.Configuration;
+import org.lovelysmp.lovelypay.config.annotations.Folder;
+import org.lovelysmp.lovelypay.data.card.CardType;
+import org.lovelysmp.lovelypay.handler.data.CardAPI;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Configuration
+@Folder("card")
+public class CardConfig {
+    @Comment("Dịch vụ gạch thẻ: THESIEUTOC, GT1SCOM, CARD2K, THESIEURECOM, DOITHE1SVN")
+    public CardAPI cardApi = CardAPI.THESIEUTOC;
+
+    @Comment("Các nhà mạng đang bật")
+    public Map<CardType, Boolean> cardTypes = Map.of(
+            CardType.VIETTEL, true,
+            CardType.VINAPHONE, true,
+            CardType.VIETNAMOBILE, true,
+            CardType.MOBIFONE, true,
+            CardType.GATE, true,
+            CardType.GARENA, true,
+            CardType.VCOIN, true,
+            CardType.ZING, true
+    );
+
+    public List<CardType> getEnabledCardTypes() {
+        return cardTypes.entrySet().stream()
+                .filter(Map.Entry::getValue)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
+}

@@ -12,9 +12,9 @@ plugins {
     id 'com.gradleup.shadow' version '8.3.3'
 }
 
-group "org.simpmc.lovelypay"
+group "org.lovelysmp.lovelypay"
 version "1.0.0"
-mainClassName = "org.simpmc.lovelypay.App"
+mainClassName = "org.lovelysmp.lovelypay.App"
 
 repositories {
     mavenLocal()

@@ -1,0 +1,142 @@
+package org.lovelysmp.lovelypay.service.cache;
+
+import lombok.Getter;
+import org.lovelysmp.lovelypay.LPPlugin;
+import org.lovelysmp.lovelypay.database.entities.SPPlayer;
+import org.lovelysmp.lovelypay.service.DatabaseService;
+import org.lovelysmp.lovelypay.service.IService;
+
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
+
+// TODO: Rewrite this class to use a more efficient data structure, use generics stuff thingy, or libraries
+// TODO: Fix this colossal class, it is a mess !!!!!!
+@Getter
+public class CacheDataService implements IService {
+
+    private static CacheDataService instance;
+    private final ConcurrentLinkedQueue<UUID> playerQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentHashMap<UUID, AtomicLong> playerTotalValue = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, AtomicLong> playerDailyTotalValue = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, AtomicLong> playerWeeklyTotalValue = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, AtomicLong> playerMonthlyTotalValue = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, AtomicLong> playerYearlyTotalValue = new ConcurrentHashMap<>();
+    private final AtomicLong serverTotalValue = new AtomicLong(0);
+    private final AtomicLong serverDailyTotalValue = new AtomicLong(0);
+    private final AtomicLong serverWeeklyTotalValue = new AtomicLong(0);
+    private final AtomicLong serverMonthlyTotalValue = new AtomicLong(0);
+    private final AtomicLong serverYearlyTotalValue = new AtomicLong(0);
+    private final AtomicLong cardTotalValue = new AtomicLong(0);
+    private final AtomicLong bankTotalValue = new AtomicLong(0);
+
+    @Override
+    public void setup() {
+        LPPlugin.getInstance().getFoliaLib().getScheduler().runTimerAsync(task -> processQueue(), 1, 20L);
+        // Player cache are updated once when player first join
+        // and then on PaymentSuccessEvent given there is a player
+
+        // Server cache are updated once when server start
+        // and then on PaymentSuccessEvent
+    }
+
+    @Override
+    public void shutdown() {
+
+    }
+
+    public void clearAllCache() {
+        playerTotalValue.clear();
+        playerDailyTotalValue.clear();
+        playerWeeklyTotalValue.clear();
+        playerMonthlyTotalValue.clear();
+        playerYearlyTotalValue.clear();
+        serverTotalValue.set(0);
+        serverDailyTotalValue.set(0);
+        serverWeeklyTotalValue.set(0);
+        serverMonthlyTotalValue.set(0);
+        serverYearlyTotalValue.set(0);
+        cardTotalValue.set(0);
+        bankTotalValue.set(0);
+    }
+
+    public void clearPlayerCache(UUID playerUUID) {
+        playerTotalValue.remove(playerUUID);
+        playerDailyTotalValue.remove(playerUUID);
+        playerWeeklyTotalValue.remove(playerUUID);
+        playerMonthlyTotalValue.remove(playerUUID);
+        playerYearlyTotalValue.remove(playerUUID);
+    }
+
+    // Process queue conurrently
+    public void addPlayerToQueue(UUID playerUUID) {
+        playerQueue.add(playerUUID);
+    }
+
+    public void processQueue() {
+        while (!playerQueue.isEmpty()) {
+            LPPlugin plugin = LPPlugin.getInstance();
+            UUID playerUUID = playerQueue.poll();
+
+            SPPlayer player = LPPlugin.getService(DatabaseService.class).getPlayerService().findByUuid(playerUUID);
+            if (player == null) {
+                // Player not found, re-add to queue
+                playerQueue.add(playerUUID);
+                continue;
+            }
+
+            double totalValue = LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerTotalAmount(player);
+            if (totalValue != 0) {
+                playerTotalValue.putIfAbsent(playerUUID, new AtomicLong((long) totalValue));
+                updatePlayerTimedValues(playerUUID);
+            }
+        }
+    }
+
+    public void updateServerDataCache() {
+        serverTotalValue.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerAmount());
+        serverDailyTotalValue.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerDailyAmount());
+        serverWeeklyTotalValue.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerWeeklyAmount());
+        serverMonthlyTotalValue.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerMonthlyAmount());
+        serverYearlyTotalValue.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerYearlyAmount());
+        cardTotalValue.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerCardAmount());
+        bankTotalValue.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerBankAmount());
+    }
+
+    private void updatePlayerTimedValues(UUID playerUUID) {
+        SPPlayer player = LPPlugin.getService(DatabaseService.class).getPlayerService().findByUuid(playerUUID);
+
+        playerDailyTotalValue.compute(playerUUID, (k, v) -> {
+            if (v == null) {
+                return new AtomicLong(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerDailyAmount(player));
+            }
+            v.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerDailyAmount(player));
+            return v;
+        });
+
+        playerWeeklyTotalValue.compute(playerUUID, (k, v) -> {
+            if (v == null) {
+                return new AtomicLong(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerWeeklyAmount(player));
+            }
+            v.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerWeeklyAmount(player));
+            return v;
+        });
+        playerMonthlyTotalValue.compute(playerUUID, (k, v) -> {
+            if (v == null) {
+                return new AtomicLong(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerMonthlyAmount(player));
+            }
+            v.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerMonthlyAmount(player));
+            return v;
+        });
+        playerYearlyTotalValue.compute(playerUUID, (k, v) -> {
+            if (v == null) {
+                return new AtomicLong(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerYearlyAmount(player));
+            }
+            v.set(LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerYearlyAmount(player));
+            return v;
+        });
+
+    }
+
+}
