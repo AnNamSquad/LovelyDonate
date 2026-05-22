@@ -52,11 +52,16 @@ public class PayosHandler extends BankHandler {
             return PaymentStatus.FAILED;
         }
         if (request == null) {
-            MessageUtil.debug("[PayOS-ProcessPayment] Request is null");
+            MessageUtil.warn("[PayOS-ProcessPayment] Request is null");
+            return PaymentStatus.FAILED;
+        }
+        if ("231".equals(request.getCode())) {
+            MessageUtil.warn("[PayOS-ProcessPayment] Duplicate PayOS orderCode. Check plugins/LovelyPay/last_id.txt and set it higher than the latest PayOS order code.");
+            MessageUtil.warn("[PayOS-ProcessPayment] PayOS response: " + request);
             return PaymentStatus.FAILED;
         }
         if (request.getData() == null) {
-            MessageUtil.debug("[PayOS-ProcessPayment] PayOS rejected request: " + request);
+            MessageUtil.warn("[PayOS-ProcessPayment] PayOS rejected request: " + request);
             return PaymentStatus.FAILED;
         }
         if (PayosAdapter.getStatus(request.getData().getStatus()) == PaymentStatus.FAILED) {
@@ -212,6 +217,7 @@ public class PayosHandler extends BankHandler {
                 return GsonUtil.getGson().fromJson(response, PayosResponse.class);
 
             } catch (Exception e) {
+                MessageUtil.warn("[PayOS-RequestTransaction] Failed to create payment request: " + e.getMessage());
                 throw new RuntimeException(e);
             }
         });
