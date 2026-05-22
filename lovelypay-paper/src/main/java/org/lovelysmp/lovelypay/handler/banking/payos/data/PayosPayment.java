@@ -6,10 +6,10 @@ import lombok.Builder;
 @Builder
 public class PayosPayment {
     @SerializedName("orderCode")
-    private int orderCode;
+    private long orderCode;
 
     @SerializedName("amount")
-    private double amount;
+    private long amount;
 
     @SerializedName("description")
     private String description;

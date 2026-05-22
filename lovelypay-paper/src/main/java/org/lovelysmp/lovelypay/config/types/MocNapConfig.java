@@ -15,14 +15,14 @@ public class MocNapConfig {
             MilestoneType.ALL, List.of(new MilestoneConfig(
                             MilestoneType.ALL,
                             100000,
-                            new BossBarConfig(true, "Mốc Nạp Toàn Thời Gian 100k",
+                            new BossBarConfig(false, "Mốc Nạp Toàn Thời Gian 100k",
                                     BossBar.Color.YELLOW,
                                     BossBar.Overlay.PROGRESS),
                             List.of("tell %player_name% Chúc mừng %player_name% đã đạt Mốc Nạp Toàn Thời Gian 100k")),
                     new MilestoneConfig(
                             MilestoneType.ALL,
                             200000,
-                            new BossBarConfig(true, "Mốc Nạp Toàn Thời Gian 200k",
+                            new BossBarConfig(false, "Mốc Nạp Toàn Thời Gian 200k",
                                     BossBar.Color.YELLOW,
                                     BossBar.Overlay.PROGRESS),
                             List.of("tell %player_name% Chúc mừng %player_name% đã đạt Mốc Nạp Toàn Thời Gian 200k"))

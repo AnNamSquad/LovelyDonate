@@ -15,14 +15,14 @@ public class MocNapServerConfig {
             MilestoneType.ALL, List.of(new MilestoneConfig(
                             MilestoneType.ALL,
                             100000,
-                            new BossBarConfig(true, "Mốc Nạp Toàn Server 100k Toàn Thời Gian",
+                            new BossBarConfig(false, "Mốc Nạp Toàn Server 100k Toàn Thời Gian",
                                     BossBar.Color.YELLOW,
                                     BossBar.Overlay.PROGRESS),
                             List.of("say Chúc mừng %player_name% đã đạt mốc nạp toàn server 100k toàn thời gian!")),
                     new MilestoneConfig(
                             MilestoneType.ALL,
                             200000,
-                            new BossBarConfig(true, "Mốc Nạp Toàn Server 200k Toàn Thời Gian",
+                            new BossBarConfig(false, "Mốc Nạp Toàn Server 200k Toàn Thời Gian",
                                     BossBar.Color.YELLOW,
                                     BossBar.Overlay.PROGRESS),
                             List.of("say Chúc mừng %player_name% đã đạt mốc nạp toàn server 200k toàn thời gian!"))

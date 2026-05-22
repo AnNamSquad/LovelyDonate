@@ -25,6 +25,7 @@ import org.lovelysmp.lovelypay.util.HashUtils;
 import org.lovelysmp.lovelypay.util.MessageUtil;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -47,11 +48,15 @@ public class PayosHandler extends BankHandler {
         try {
             request = requestTransaction(detail).get();
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            MessageUtil.debug("[PayOS-ProcessPayment] Error while requesting transaction: " + e.getMessage());
             return PaymentStatus.FAILED;
         }
-        if (request == null || request.getData() == null) {
+        if (request == null) {
             MessageUtil.debug("[PayOS-ProcessPayment] Request is null");
+            return PaymentStatus.FAILED;
+        }
+        if (request.getData() == null) {
+            MessageUtil.debug("[PayOS-ProcessPayment] PayOS rejected request: " + request);
             return PaymentStatus.FAILED;
         }
         if (PayosAdapter.getStatus(request.getData().getStatus()) == PaymentStatus.FAILED) {
@@ -90,18 +95,22 @@ public class PayosHandler extends BankHandler {
         try {
             res = getTransactionStatus(detail.getRefID()).get();
         } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
+            MessageUtil.debug("[PayOS-GetTransactionStatus] Error while getting transaction status: " + e.getMessage());
             return new PaymentResult(PaymentStatus.FAILED, 0, null);
         }
-        if (res == null || res.getData() == null) {
-            MessageUtil.debug("[PayOS-GetTransactionStatus] Data is null");
+        if (res == null) {
+            MessageUtil.debug("[PayOS-GetTransactionStatus] Response is null");
             return new PaymentResult(PaymentStatus.FAILED, 0, null);
         }
-        if (Integer.valueOf(res.getCode()) == 231) {
+        if ("231".equals(res.getCode())) {
             MessageUtil.debug("[PayOS-GetTransactionStatus] Payment id exist");
             MessageUtil.debug("[PayOS-GetTransactionStatus] Lỗi này xảy ra khi bạn reset config và mất file last_id.txt, hãy lên cổng payos và tìm lại id đơn hàng mới nhất và điền vào file ó");
             MessageUtil.debug("[PayOS-GetTransactionStatus]" + res);
             return new PaymentResult(PaymentStatus.EXIST, 0, null);
+        }
+        if (res.getData() == null) {
+            MessageUtil.debug("[PayOS-GetTransactionStatus] Data is null: " + res);
+            return new PaymentResult(PaymentStatus.FAILED, 0, null);
         }
         MessageUtil.debug("[PayOS-GetTransactionStatus]" + res);
         PaymentStatus paymentStatus = PayosAdapter.getStatus(res.getData().getStatus());
@@ -122,7 +131,7 @@ public class PayosHandler extends BankHandler {
                 return PaymentStatus.CANCELLED;
             }
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            MessageUtil.debug("[PayOS-Cancel] Error while cancelling transaction: " + e.getMessage());
             return PaymentStatus.FAILED;
         }
         return PaymentStatus.FAILED;
@@ -176,8 +185,9 @@ public class PayosHandler extends BankHandler {
             String base = "https://api-merchant.payos.vn/v2/payment-requests";
             try {
                 String orderid = String.valueOf(LPPlugin.getService(OrderIDService.class).getNextId());
+                long amount = Math.round(bank.getAmount());
                 String valuetoBeHashed = MessageFormat.format("amount={0,number,#}&cancelUrl={1}&description={2}&orderCode={3}&returnUrl={4}",
-                        bank.getAmount(),
+                        amount,
                         RETURN_CANCEL_URl,
                         "payos",
                         orderid,
@@ -185,11 +195,11 @@ public class PayosHandler extends BankHandler {
                 String hash = HashUtils.hmacSha256Hex(config.checksumKey, valuetoBeHashed);
                 MessageUtil.debug("[PayOS-RequestTransaction] Hash: " + hash);
                 PayosPayment payosPayment = PayosPayment.builder()
-                        .amount(bank.getAmount())
+                        .amount(amount)
                         .cancelUrl("https://payos.vn")
                         .returnUrl("https://payos.vn")
                         .description("payos")
-                        .orderCode(Integer.parseInt(orderid))
+                        .orderCode(Long.parseLong(orderid))
                         .signature(hash)
                         .expiredAt((int) (System.currentTimeMillis() / 1000L + bankConfig.bankingTimeout)) // 5 minute
                         .build();
@@ -224,9 +234,7 @@ public class PayosHandler extends BankHandler {
             outputStream.flush();
         }
 
-        try (var reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-            return reader.lines().collect(Collectors.joining());
-        }
+        return readResponse(connection);
     }
 
     private @NotNull String get(String base, PayosConfig config) throws IOException {
@@ -240,7 +248,16 @@ public class PayosHandler extends BankHandler {
         connection.setConnectTimeout(7000);
         connection.setReadTimeout(7000);
 
-        try (var reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+        return readResponse(connection);
+    }
+
+    private @NotNull String readResponse(HttpURLConnection connection) throws IOException {
+        int responseCode = connection.getResponseCode();
+        InputStream stream = responseCode >= 400 ? connection.getErrorStream() : connection.getInputStream();
+        if (stream == null) {
+            return "";
+        }
+        try (var reader = new BufferedReader(new InputStreamReader(stream))) {
             return reader.lines().collect(Collectors.joining());
         }
     }

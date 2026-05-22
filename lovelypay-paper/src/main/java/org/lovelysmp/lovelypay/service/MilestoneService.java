@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.lovelysmp.lovelypay.LPPlugin;
 import org.lovelysmp.lovelypay.config.ConfigManager;
+import org.lovelysmp.lovelypay.config.types.MainConfig;
 import org.lovelysmp.lovelypay.config.types.MocNapConfig;
 import org.lovelysmp.lovelypay.config.types.MocNapServerConfig;
 import org.lovelysmp.lovelypay.config.types.data.BossBarConfig;
@@ -59,6 +60,7 @@ public class MilestoneService implements IService {
         clearServerMilestones();
         LPPlugin.getInstance().getFoliaLib().getScheduler().runAsync(task -> {
             PaymentLogService paymentLogService = LPPlugin.getService(DatabaseService.class).getPaymentLogService();
+            boolean bossbarsEnabled = ConfigManager.getInstance().getConfig(MainConfig.class).enableBossbars;
             MocNapServerConfig mocNapServerConfig = ConfigManager.getInstance().getConfig(MocNapServerConfig.class);
             List<MilestoneConfig> loadedMilestones = new ArrayList<>();
             List<ObjectObjectMutablePair<MilestoneConfig, BossBar>> loadedBossBars = new ArrayList<>();
@@ -87,7 +89,7 @@ public class MilestoneService implements IService {
                 if (!pendingMilestones.isEmpty()) {
                     MilestoneConfig config = pendingMilestones.getFirst();
                     BossBarConfig bossBarConfig = config.bossbar;
-                    if (bossBarConfig != null && bossBarConfig.enabled) {
+                    if (bossbarsEnabled && bossBarConfig != null && bossBarConfig.enabled) {
                         BossBar bossBar = BossBar.bossBar(
                                 MessageUtil.getComponentParsed(bossBarConfig.getTitle(), null),
                                 getBossBarProgress(serverBal, config.amount),
@@ -163,6 +165,7 @@ public class MilestoneService implements IService {
         playerBossBars.remove(uuid);
         LPPlugin.getInstance().getFoliaLib().getScheduler().runAsync(task -> {
             PaymentLogService paymentLogService = LPPlugin.getService(DatabaseService.class).getPaymentLogService();
+            boolean bossbarsEnabled = ConfigManager.getInstance().getConfig(MainConfig.class).enableBossbars;
 
             SPPlayer player = LPPlugin.getService(DatabaseService.class).getPlayerService().findByUuid(uuid);
             double playerChargedAmount = LPPlugin.getService(DatabaseService.class).getPaymentLogService().getPlayerTotalAmount(player);
@@ -195,12 +198,12 @@ public class MilestoneService implements IService {
                         case MilestoneType.YEARLY -> paymentLogService.getPlayerYearlyAmount(player);
                         default -> throw new IllegalStateException("Unexpected value: " + config.getType());
                     };
-                    if (config.bossbar.enabled) {
+                    if (bossbarsEnabled && bossBarConfig != null && bossBarConfig.enabled) {
                         BossBar bossBar = BossBar.bossBar(
                                 MessageUtil.getComponentParsed(bossBarConfig.getTitle(), null), // bossbar title will be loaded after
-                                (float) (playerBal / config.amount),
-                                config.bossbar.color,
-                                config.bossbar.style
+                                getBossBarProgress(playerBal, config.amount),
+                                bossBarConfig.color,
+                                bossBarConfig.style
                         );
                         playerBossBars.get(uuid).add(new ObjectObjectMutablePair<>(config, bossBar));
                         MessageUtil.debug("Loaded MocNap BossBar For Player " + type.name() + " " + config.amount);
