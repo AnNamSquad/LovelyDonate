@@ -1,0 +1,107 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        // Pull in the RCON-Java client
+        classpath 'org.glavo:rcon-java:3.0'
+    }
+}
+plugins {
+    id 'java'
+    // Note: We apply the shadow plugin only in the modules that need it.
+    id 'com.gradleup.shadow' version '9.4.1' apply false
+}
+jar {
+    enabled = false
+}
+group = 'org.simpmc'
+version = '1.3.5'
+
+ext {
+    minecraftVersion = findProperty('minecraftVersion') ?: '1.21.11'
+    purpurApiVersion = findProperty('purpurApiVersion') ?: "${minecraftVersion}-R0.1-SNAPSHOT"
+    targetJavaVersion = (findProperty('targetJavaVersion') ?: '21').toInteger()
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    repositories {
+        mavenCentral()
+        maven {
+            name = "purpurmc-repo"
+            url = "https://repo.purpurmc.org/snapshots"
+        }
+        maven {
+            url = "https://repo.opencollab.dev/main/"
+        }
+        maven {
+            name = "papermc-repo"
+            url = "https://repo.papermc.io/repository/maven-public/"
+        }
+        maven {
+            name = "sonatype"
+            url = "https://oss.sonatype.org/content/groups/public/"
+        }
+        maven {
+            name = "jitpack"
+            url = "https://jitpack.io"
+        }
+        maven {
+            url = "https://repo.codemc.io/repository/maven-releases/"
+        }
+        maven {
+            url = "https://repo.codemc.io/repository/maven-snapshots/"
+        }
+        maven {
+            url = 'https://repo.extendedclip.com/releases/'
+        }
+        maven {
+            url = 'https://oss.sonatype.org/content/repositories/snapshots'
+        }
+        maven {
+            url = 'https://repo.rosewooddev.io/repository/public/'
+        }
+        maven {
+            url = 'https://libraries.minecraft.net/'
+        }
+        maven {
+            name = "tcoded-releases"
+            url = "https://repo.tcoded.com/releases"
+        }
+        maven {
+            name = "nightexpress-releases"
+            url = "https://repo.nightexpressdev.com/releases"
+        }
+    }
+
+    java {
+        def javaVersion = JavaVersion.toVersion(rootProject.ext.targetJavaVersion)
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
+        if (JavaVersion.current() < javaVersion) {
+            toolchain.languageVersion = JavaLanguageVersion.of(rootProject.ext.targetJavaVersion)
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release.set(rootProject.ext.targetJavaVersion)
+    }
+}
+
+// Keep the root project on the same Java target as the subprojects.
+java {
+    def javaVersion = JavaVersion.toVersion(rootProject.ext.targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(rootProject.ext.targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release.set(rootProject.ext.targetJavaVersion)
+}

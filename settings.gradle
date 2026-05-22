@@ -1,0 +1,3 @@
+rootProject.name = 'SimpPay'
+include 'simppay-api', 'simppay-paper', 'simppay-converter' //, 'simppay-webhook-receiver'
+
