@@ -120,7 +120,7 @@ public final class LPPlugin extends JavaPlugin {
                 e.printStackTrace();
             }
         }
-        if (commandHandler.enabled) {
+        if (commandHandler != null && commandHandler.enabled) {
             commandHandler.onDisable();
         }
         instance = null;

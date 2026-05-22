@@ -26,6 +26,6 @@ public class DatabaseService implements IService {
 
     @Override
     public void shutdown() {
-
+        database.close();
     }
 }
