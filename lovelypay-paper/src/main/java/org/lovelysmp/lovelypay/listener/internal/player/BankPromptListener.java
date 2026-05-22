@@ -48,12 +48,16 @@ public class BankPromptListener implements Listener {
         }
         MessageUtil.debug("BankPrompt: " + qrCode);
 
-        byte[] mapBytes = MapQR.encodeTextToMapBytes(qrCode);
+        try {
+            byte[] mapBytes = MapQR.encodeTextToMapBytes(qrCode);
 
-        LPPlugin.getService(PaymentService.class).getPlayerBankQRCode().put(event.getPlayerUUID(), mapBytes);
-        // PacketEvents
-        // Forge a fake mapData
-        MapQR.sendPacketQRMap(mapBytes, player);
+            LPPlugin.getService(PaymentService.class).getPlayerBankQRCode().put(event.getPlayerUUID(), mapBytes);
+            // PacketEvents
+            // Forge a fake mapData
+            MapQR.sendPacketQRMap(mapBytes, player);
+        } catch (RuntimeException e) {
+            MessageUtil.warn("[BankPrompt] Failed to generate QR map for " + player.getName() + ": " + e.getMessage());
+        }
 
 
     }
