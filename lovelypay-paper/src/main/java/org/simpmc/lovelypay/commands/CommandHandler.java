@@ -1,7 +1,7 @@
 package org.simpmc.lovelypay.commands;
 
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import org.simpmc.lovelypay.LPPlugin;
 import org.simpmc.lovelypay.commands.root.BankingCommand;
 import org.simpmc.lovelypay.commands.root.NaptheCommand;
@@ -19,7 +19,7 @@ public class CommandHandler {
     public boolean enabled;
 
     public void onLoad() {
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(plugin).shouldHookPaperReload(true).silentLogs(true));
+        CommandAPI.onLoad(new CommandAPIPaperConfig(plugin).silentLogs(true));
     }
 
     public void onEnable() {
