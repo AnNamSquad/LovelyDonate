@@ -1,4 +1,22 @@
 import org.glavo.rcon.Rcon
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.ow2.asm:asm:9.9'
+    }
+}
 
 plugins {
     id 'java'
@@ -27,7 +45,7 @@ dependencies {
     implementation("de.exlll:configlib-paper:4.6.0") {
         exclude group: 'org.yaml', module: 'snakeyaml-engine'
     }
-    implementation "dev.jorel:commandapi-paper-shade:11.1.0"
+    implementation "dev.jorel:commandapi-paper-shade:11.2.0"
     implementation("com.tcoded:FoliaLib:0.5.1")
     implementation('me.devnatan:inventory-framework-platform-bukkit:3.5.0')
     implementation('me.devnatan:inventory-framework-platform-paper:3.5.0')
@@ -55,6 +73,111 @@ shadowJar {
     relocate("net.wesjd.anvilgui", "me.typical.lib.anvilgui")
     relocate("kotlin", "me.typical.lib.kotlin")
 }
+
+byte[] patchCommandApiNms12111(byte[] originalBytes) {
+    boolean[] foundTargetMethod = [false]
+
+    ClassReader reader = new ClassReader(originalBytes)
+    ClassWriter writer = new ClassWriter(reader, 0)
+    ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+        @Override
+        MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+            MethodVisitor methodVisitor = super.visitMethod(access, name, descriptor, signature, exceptions)
+            if (name.startsWith('lambda$reloadDataPacks$')
+                && descriptor == '(Lnet/minecraft/server/MinecraftServer$ReloadableResources;Ljava/util/Collection;Lnet/minecraft/server/MinecraftServer$ReloadableResources;)V') {
+                foundTargetMethod[0] = true
+                return new MethodVisitor(Opcodes.ASM9, methodVisitor) {
+                    boolean patchedInvocation = false
+                    boolean previousInstructionWasPatchedCast = false
+
+                    @Override
+                    void visitTypeInsn(int opcode, String type) {
+                        previousInstructionWasPatchedCast = opcode == Opcodes.CHECKCAST
+                            && type == 'net/minecraft/server/packs/resources/MultiPackResourceManager'
+                        super.visitTypeInsn(opcode, type)
+                    }
+
+                    @Override
+                    void visitMethodInsn(int opcode, String owner, String methodName, String methodDescriptor, boolean isInterface) {
+                        if (opcode == Opcodes.INVOKEVIRTUAL
+                            && owner == 'net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplateManager'
+                            && methodName == 'onResourceManagerReload'
+                            && methodDescriptor == '(Lnet/minecraft/server/packs/resources/ResourceManager;)V') {
+                            if (!previousInstructionWasPatchedCast) {
+                                // Paper's 1.21.11 plugin remapper rewrites this invocation to the concrete resource manager type.
+                                super.visitTypeInsn(Opcodes.CHECKCAST, 'net/minecraft/server/packs/resources/MultiPackResourceManager')
+                            }
+                            patchedInvocation = true
+                        }
+                        previousInstructionWasPatchedCast = false
+                        super.visitMethodInsn(opcode, owner, methodName, methodDescriptor, isInterface)
+                    }
+
+                    @Override
+                    void visitEnd() {
+                        if (!patchedInvocation) {
+                            throw new GradleException('Could not patch CommandAPI NMS_1_21_R7 reloadDataPacks resource manager call')
+                        }
+                        super.visitEnd()
+                    }
+                }
+            }
+            return methodVisitor
+        }
+    }
+    reader.accept(visitor, 0)
+
+    if (!foundTargetMethod[0]) {
+        throw new GradleException('Could not find CommandAPI NMS_1_21_R7 reloadDataPacks lambda to patch')
+    }
+    return writer.toByteArray()
+}
+
+tasks.register('patchCommandApiNms12111') {
+    dependsOn(shadowJar)
+
+    doLast {
+        File jarFile = shadowJar.archiveFile.get().asFile
+        File patchedJar = File.createTempFile(jarFile.name, '.patched', jarFile.parentFile)
+        String targetClass = 'me/typical/lib/commandapi/nms/NMS_1_21_R7.class'
+        boolean patchedClass = false
+
+        new ZipInputStream(new FileInputStream(jarFile)).withCloseable { zipInput ->
+            new ZipOutputStream(new FileOutputStream(patchedJar)).withCloseable { zipOutput ->
+                ZipEntry entry
+                while ((entry = zipInput.nextEntry) != null) {
+                    byte[] entryBytes = zipInput.readAllBytes()
+                    if (entry.name == targetClass) {
+                        entryBytes = patchCommandApiNms12111(entryBytes)
+                        patchedClass = true
+                    }
+
+                    ZipEntry newEntry = new ZipEntry(entry.name)
+                    newEntry.comment = entry.comment
+                    newEntry.extra = entry.extra
+                    newEntry.time = entry.time
+                    zipOutput.putNextEntry(newEntry)
+                    zipOutput.write(entryBytes)
+                    zipOutput.closeEntry()
+                    zipInput.closeEntry()
+                }
+            }
+        }
+
+        if (!patchedClass) {
+            patchedJar.delete()
+            throw new GradleException("Could not find ${targetClass} in ${jarFile.name}")
+        }
+
+        java.nio.file.Files.move(
+            patchedJar.toPath(),
+            jarFile.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+    }
+}
+
+shadowJar.finalizedBy(tasks.named('patchCommandApiNms12111'))
 tasks.register('sendRconCommand') {
     description = 'Sends "res" command to the Minecraft server via RCON'
     doLast {
