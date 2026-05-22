@@ -1,3 +1,3 @@
-rootProject.name = 'SimpPay'
-include 'simppay-api', 'simppay-paper', 'simppay-converter' //, 'simppay-webhook-receiver'
+rootProject.name = 'LovelyPay'
+include 'lovelypay-api', 'lovelypay-paper', 'lovelypay-converter' //, 'lovelypay-webhook-receiver'
 

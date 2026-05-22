@@ -7,7 +7,7 @@ Automated QR payment and prepaid mobile card recharge solution for Vietnamese Mi
 
 **Supported server:** Purpur 1.21.11, running on Java 21 or Java 25.
 
-![Bstats](https://bstats.org/signatures/bukkit/SimpPay.svg)
+![Bstats](https://bstats.org/signatures/bukkit/LovelyPay.svg)
 
 Current Features
 ===========
@@ -30,7 +30,7 @@ Usage Guide
   and [PlaceholderAPI
 ](https://www.spigotmc.org/resources/placeholderapi.6245/) to function
 - Run the server with Java 21 or Java 25
-- Download the plugin [here](https://github.com/SimpMC-Studio/SimpPay/releases/), and place it in the `plugins` folder
+- Download the plugin [here](https://github.com/SimpMC-Studio/LovelyPay/releases/), and place it in the `plugins` folder
 - You need to install floodgate to use the card recharge interface for Bedrock players, download
   it [here](https://geysermc.org/download?project=floodgate)
 
@@ -52,20 +52,20 @@ or [topper](https://www.spigotmc.org/resources/topper.101325/)
 
 | Placeholder                      | Function                                            | Notes |
 |----------------------------------|-----------------------------------------------------|-------|
-| %simppay_total%                  | Returns total recharge of that player               |       |
-| %simppay_total_formatted%        | Returns player's recharge amount in xxx.xxxđ format |       |
-| %simppay_server_total%           | Returns total server recharge                       |       |
-| %simppay_server_total_formatted% | Returns server recharge amount in xxx.xxxđ format   |       |
-| %simppay_bank_total_formatted%   | Returns bank recharge amount in xxx.xxxđ format     |       |
-| %simppay_card_total_formatted%   | Returns card recharge amount in xxx.xxxđ format     |       |
-| %simppay_end_promo%              | Returns End Promo dd/MM/yyyy HH:mm format           |       |
+| %lovelypay_total%                  | Returns total recharge of that player               |       |
+| %lovelypay_total_formatted%        | Returns player's recharge amount in xxx.xxxđ format |       |
+| %lovelypay_server_total%           | Returns total server recharge                       |       |
+| %lovelypay_server_total_formatted% | Returns server recharge amount in xxx.xxxđ format   |       |
+| %lovelypay_bank_total_formatted%   | Returns bank recharge amount in xxx.xxxđ format     |       |
+| %lovelypay_card_total_formatted%   | Returns card recharge amount in xxx.xxxđ format     |       |
+| %lovelypay_end_promo%              | Returns End Promo dd/MM/yyyy HH:mm format           |       |
 
 **Plugin Configuration:**
 
-The directory structure of `./plugins/SimpPay` is as follows
+The directory structure of `./plugins/LovelyPay` is as follows
 
 ```
-SimpPay
+LovelyPay
 │   coins-config.yml 
 │   database-config.yml
 │   last_id.txt
