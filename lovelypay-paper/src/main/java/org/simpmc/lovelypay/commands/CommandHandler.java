@@ -4,6 +4,7 @@ import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIPaperConfig;
 import org.simpmc.lovelypay.LPPlugin;
 import org.simpmc.lovelypay.commands.root.BankingCommand;
+import org.simpmc.lovelypay.commands.root.LovelyPayCommand;
 import org.simpmc.lovelypay.commands.root.NaptheCommand;
 import org.simpmc.lovelypay.commands.root.NaptheNhanhCommand;
 import org.simpmc.lovelypay.commands.root.ViewHistoryCommand;
@@ -25,6 +26,7 @@ public class CommandHandler {
     public void onEnable() {
         enabled = true;
         CommandAPI.onEnable();
+        new LovelyPayCommand();
         new ManualChargeCommand();
         new LovelyPayAdminCommand();
         new BankingCommand();

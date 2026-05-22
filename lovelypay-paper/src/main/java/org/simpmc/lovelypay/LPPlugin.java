@@ -43,7 +43,6 @@ public final class LPPlugin extends JavaPlugin {
     private FoliaLib foliaLib;
     @Getter
     private CommandHandler commandHandler;
-    private boolean dev = false;
     @Getter
     private ViewFrame viewFrame;
     @Getter
@@ -68,7 +67,6 @@ public final class LPPlugin extends JavaPlugin {
         commandHandler.onLoad();
     }
 
-    // TODO: A fking mess, please fix
     @Override
     public void onEnable() {
         // Reset config

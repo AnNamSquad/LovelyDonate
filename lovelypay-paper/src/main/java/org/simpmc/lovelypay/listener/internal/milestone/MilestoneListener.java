@@ -37,7 +37,6 @@ public class MilestoneListener implements Listener {
             MilestoneService service = LPPlugin.getService(MilestoneService.class);
             MessageUtil.debug("Loading player milestone for " + event.getPlayer().getName());
 
-            List<BossBar> serverBossbars = service.serverBossbars.stream().map(ObjectObjectMutablePair::right).toList();
             LPPlugin.getInstance().getFoliaLib().getScheduler().runLater(task -> {
                 service.loadPlayerMilestone(uuid);
             }, 20 * 2).thenAccept(task -> {
@@ -50,9 +49,7 @@ public class MilestoneListener implements Listener {
             });
 
             // have to load after player milestone is loaded
-            for (BossBar bar : serverBossbars) {
-                bar.addViewer(event.getPlayer());
-            }
+            service.showServerBossBars(event.getPlayer());
 
         }, 20);
     }
@@ -209,7 +206,7 @@ public class MilestoneListener implements Listener {
                 // reset player current milestone
                 iter.remove();
                 MessageUtil.debug("Server completed milestone " + config.amount);
-                MessageUtil.debug("Server remaining milestone " + milestoneService.playerCurrentMilestones.get(event.getPlayerUUID()).size());
+                MessageUtil.debug("Server remaining milestone " + milestoneService.serverCurrentMilestones.size());
                 MessageUtil.debug("Server removed " + config.toString());
                 // Call event for player milestone
                 LPPlugin.getInstance().getFoliaLib().getScheduler().runNextTick(task -> {
@@ -257,6 +254,11 @@ public class MilestoneListener implements Listener {
                 });
             }
         }
+    }
+
+    @EventHandler
+    public void reloadServerMilestoneAfterCompletion(ServerMilestoneEvent event) {
+        LPPlugin.getService(MilestoneService.class).loadServerMilestone();
     }
 
 }

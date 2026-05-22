@@ -16,30 +16,20 @@ import org.simpmc.lovelypay.service.database.PaymentLogService;
 import org.simpmc.lovelypay.util.MessageUtil;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MilestoneService implements IService {
-    //     NOTE: BossBar are static, changing bossbar reflect the changes to player who are added to it
-//     Design a central bossbar of the plugin
-//     Use one for player
-//     one for entire server
-//     config example
-//     ALL:
-//     - amount: 100
-//       commands:
-//       - "/tell %player_name% Cảm ơn đã ủng hộ server hehe"
-//       - "/tell %player_name% Cảm ơn đã ủng hộ server hehe"
-//     DAILY:
-//     - amount: 100
-//       commands:
-//       - "/tell %player_name% Cảm ơn đã ủng hộ server hehe"
     public ConcurrentHashMap<UUID, List<ObjectObjectMutablePair<MilestoneConfig, BossBar>>> playerBossBars = new ConcurrentHashMap<>();
     public ConcurrentHashMap<UUID, List<MilestoneConfig>> playerCurrentMilestones = new ConcurrentHashMap<>();
     public List<MilestoneConfig> serverCurrentMilestones = new ArrayList<>();
-    public List<ObjectObjectMutablePair<MilestoneConfig, BossBar>> serverBossbars = new ArrayList<>(); // contains all valid loaded milestones
+    public List<ObjectObjectMutablePair<MilestoneConfig, BossBar>> serverBossbars = new ArrayList<>();
+    private final AtomicInteger serverMilestoneLoadVersion = new AtomicInteger();
 
 
     @Override
@@ -56,6 +46,7 @@ public class MilestoneService implements IService {
 
     @Override
     public void shutdown() {
+        serverMilestoneLoadVersion.incrementAndGet();
         playerCurrentMilestones.clear();
         playerBossBars.clear();
         serverCurrentMilestones.clear();
@@ -64,11 +55,13 @@ public class MilestoneService implements IService {
 
     // all milestones should be reloaded upon a milestone complete event
     public void loadServerMilestone() {
+        int loadVersion = serverMilestoneLoadVersion.incrementAndGet();
+        clearServerMilestones();
         LPPlugin.getInstance().getFoliaLib().getScheduler().runAsync(task -> {
             PaymentLogService paymentLogService = LPPlugin.getService(DatabaseService.class).getPaymentLogService();
-
-            long entireServerAmount = LPPlugin.getService(DatabaseService.class).getPaymentLogService().getEntireServerAmount();
             MocNapServerConfig mocNapServerConfig = ConfigManager.getInstance().getConfig(MocNapServerConfig.class);
+            List<MilestoneConfig> loadedMilestones = new ArrayList<>();
+            List<ObjectObjectMutablePair<MilestoneConfig, BossBar>> loadedBossBars = new ArrayList<>();
 
             for (Map.Entry<MilestoneType, List<MilestoneConfig>> entry : mocNapServerConfig.mocnap.entrySet()) {
                 MilestoneType type = entry.getKey();
@@ -76,40 +69,93 @@ public class MilestoneService implements IService {
                     continue;
                 }
                 MessageUtil.debug("Loading MocNap Server " + type.name());
-                for (MilestoneConfig config : entry.getValue()) {
+                double serverBal = getServerAmount(paymentLogService, type);
+                List<MilestoneConfig> pendingMilestones = entry.getValue().stream()
+                        .filter(config -> config != null && config.amount > serverBal)
+                        .sorted(Comparator.comparingInt(config -> config.amount))
+                        .toList();
 
-                    if (config.amount <= entireServerAmount) {
-                        continue;
-                    }
+                for (MilestoneConfig config : pendingMilestones) {
                     if (config.type != type) {
                         config.setType(type); // auto correct
                     }
                     MessageUtil.debug("Loading MocNap Server " + type.name() + " " + config.amount);
+                    loadedMilestones.add(config);
+                    MessageUtil.debug("Loaded MocNap Server Entry For Player " + type.name() + " " + config.amount);
+                }
+
+                if (!pendingMilestones.isEmpty()) {
+                    MilestoneConfig config = pendingMilestones.getFirst();
                     BossBarConfig bossBarConfig = config.bossbar;
-                    double serverBal = switch (config.getType()) {
-                        case ALL -> paymentLogService.getEntireServerAmount();
-                        case DAILY -> paymentLogService.getEntireServerDailyAmount();
-                        case WEEKLY -> paymentLogService.getEntireServerWeeklyAmount();
-                        case MONTHLY -> paymentLogService.getEntireServerMonthlyAmount();
-                        case YEARLY -> paymentLogService.getEntireServerYearlyAmount();
-                        default -> throw new IllegalStateException("Unexpected value: " + config.getType());
-                    };
-                    if (config.bossbar.enabled) {
+                    if (bossBarConfig != null && bossBarConfig.enabled) {
                         BossBar bossBar = BossBar.bossBar(
-                                MessageUtil.getComponentParsed(bossBarConfig.getTitle(), null), // bossbar title will be loaded after
-                                (float) (serverBal / config.amount),
-                                config.bossbar.color,
-                                config.bossbar.style
+                                MessageUtil.getComponentParsed(bossBarConfig.getTitle(), null),
+                                getBossBarProgress(serverBal, config.amount),
+                                bossBarConfig.color,
+                                bossBarConfig.style
                         );
-                        serverBossbars.add(new ObjectObjectMutablePair<>(config, bossBar));
+                        loadedBossBars.add(new ObjectObjectMutablePair<>(config, bossBar));
                         MessageUtil.debug("Loaded MocNap Server BossBar " + type.name() + " " + config.amount);
                     }
-                    serverCurrentMilestones.add(config);
-                    MessageUtil.debug("Loaded MocNap Server Entry For Player " + type.name() + " " + config.amount);
-
                 }
             }
+
+            if (loadVersion != serverMilestoneLoadVersion.get()) {
+                return;
+            }
+
+            serverCurrentMilestones.addAll(loadedMilestones);
+            serverBossbars.addAll(loadedBossBars);
+            addServerBossBarViewers(loadedBossBars.stream().map(ObjectObjectMutablePair::right).toList());
         });
+    }
+
+    public void showServerBossBars(Player player) {
+        List<BossBar> bossBars = serverBossbars.stream().map(ObjectObjectMutablePair::right).toList();
+        for (BossBar bar : bossBars) {
+            LPPlugin.getInstance().getFoliaLib().getScheduler().runAtEntity(player, task -> bar.addViewer(player));
+        }
+    }
+
+    private void clearServerMilestones() {
+        List<BossBar> oldBossBars = serverBossbars.stream().map(ObjectObjectMutablePair::right).toList();
+        serverCurrentMilestones.clear();
+        serverBossbars.clear();
+        removeServerBossBarViewers(oldBossBars);
+    }
+
+    private void addServerBossBarViewers(Collection<BossBar> bossBars) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            for (BossBar bar : bossBars) {
+                LPPlugin.getInstance().getFoliaLib().getScheduler().runAtEntity(player, task -> bar.addViewer(player));
+            }
+        }
+    }
+
+    private void removeServerBossBarViewers(Collection<BossBar> bossBars) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            for (BossBar bar : bossBars) {
+                LPPlugin.getInstance().getFoliaLib().getScheduler().runAtEntity(player, task -> bar.removeViewer(player));
+            }
+        }
+    }
+
+    private double getServerAmount(PaymentLogService paymentLogService, MilestoneType type) {
+        return switch (type) {
+            case ALL -> paymentLogService.getEntireServerAmount();
+            case DAILY -> paymentLogService.getEntireServerDailyAmount();
+            case WEEKLY -> paymentLogService.getEntireServerWeeklyAmount();
+            case MONTHLY -> paymentLogService.getEntireServerMonthlyAmount();
+            case YEARLY -> paymentLogService.getEntireServerYearlyAmount();
+        };
+    }
+
+    private float getBossBarProgress(double currentAmount, int milestoneAmount) {
+        if (milestoneAmount <= 0) {
+            return 1.0F;
+        }
+        double progress = currentAmount / milestoneAmount;
+        return (float) Math.max(0.0D, Math.min(1.0D, progress));
     }
 
     public void loadPlayerMilestone(UUID uuid) {

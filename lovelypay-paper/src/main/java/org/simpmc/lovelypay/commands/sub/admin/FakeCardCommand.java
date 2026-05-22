@@ -5,7 +5,6 @@ import dev.jorel.commandapi.arguments.BooleanArgument;
 import dev.jorel.commandapi.executors.CommandArguments;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.simpmc.lovelypay.LPPlugin;
 import org.simpmc.lovelypay.data.card.CardPrice;
 import org.simpmc.lovelypay.data.card.CardType;
 import org.simpmc.lovelypay.event.PaymentSuccessEvent;
@@ -26,8 +25,6 @@ public class FakeCardCommand {
     }
 
     public static void execute(Player player, CommandArguments args) {
-        LPPlugin plugin = LPPlugin.getInstance();
-
         Payment payment = new Payment(
                 UUID.randomUUID(),
                 player.getUniqueId(),
