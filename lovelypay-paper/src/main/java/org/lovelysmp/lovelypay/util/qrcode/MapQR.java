@@ -82,7 +82,7 @@ public class MapQR {
 
         int slotIndex = getMapSlot(player);
         PacketEvents.getAPI().getPlayerManager().sendPacket(player, new WrapperPlayServerSetSlot(
-                -2,
+                0,
                 0,
                 slotIndex,
                 createMapItem()
@@ -103,6 +103,7 @@ public class MapQR {
         );
 
         PacketEvents.getAPI().getPlayerManager().sendPacket(player, mapDataPacket);
+        MessageUtil.info("[MapQR] Sent QR map " + MAP_ID + " to " + player.getName() + " slot " + slotIndex);
     }
 
     private static int getMapSlot(Player player) {
